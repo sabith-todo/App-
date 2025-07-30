@@ -1,0 +1,98 @@
+import 'package:flutter/material.dart';
+
+class CGPACalculatorPage extends StatefulWidget {
+  @override
+  _CGPACalculatorPageState createState() => _CGPACalculatorPageState();
+}
+
+class _CGPACalculatorPageState extends State<CGPACalculatorPage> {
+  List<TextEditingController> creditControllers = [];
+  List<TextEditingController> gradeControllers = [];
+  int subjectCount = 3;
+
+  double? cgpa;
+
+  void calculateCGPA() {
+    double totalCredits = 0;
+    double totalPoints = 0;
+
+    for (int i = 0; i < subjectCount; i++) {
+      double credits = double.tryParse(creditControllers[i].text) ?? 0;
+      double grade = double.tryParse(gradeControllers[i].text) ?? 0;
+
+      totalCredits += credits;
+      totalPoints += credits * grade;
+    }
+
+    setState(() {
+      cgpa = totalCredits == 0 ? 0 : totalPoints / totalCredits;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    for (int i = 0; i < subjectCount; i++) {
+      creditControllers.add(TextEditingController());
+      gradeControllers.add(TextEditingController());
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in creditControllers) {
+      controller.dispose();
+    }
+    for (var controller in gradeControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("CGPA Calculator")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            for (int i = 0; i < subjectCount; i++)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: creditControllers[i],
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                          labelText: "Credits (Sub ${i + 1})"),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: gradeControllers[i],
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          InputDecoration(labelText: "Grade (Sub ${i + 1})"),
+                    ),
+                  ),
+                ],
+              ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: calculateCGPA,
+              child: Text("Calculate CGPA"),
+            ),
+            SizedBox(height: 20),
+            if (cgpa != null)
+              Text(
+                "Your CGPA is: ${cgpa!.toStringAsFixed(2)}",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
