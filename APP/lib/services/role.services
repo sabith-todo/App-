@@ -1,0 +1,26 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class RoleService {
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
+
+  Future<String> getCurrentUserRole() async {
+    final uid = _auth.currentUser!.uid;
+    final snap = await _firestore.collection('users').doc(uid).get();
+    return snap.data()?['role'] ?? 'student';
+  }
+
+  Future<void> promoteToStaff(String uid) async {
+    await _firestore.collection('users').doc(uid).update({'role': 'staff'});
+  }
+
+  Future<void> assignStaff(String staffUid, String subject, String className) async {
+    await _firestore.collection('allocations').add({
+      'staffUid': staffUid,
+      'subject': subject,
+      'className': className,
+      'timestamp': Timestamp.now(),
+    });
+  }
+}

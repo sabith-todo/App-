@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class NotesPage extends StatefulWidget {
+  const NotesPage({super.key});
+  @override
+  State<NotesPage> createState() => _NotesPageState();
+}
+
+class _NotesPageState extends State<NotesPage> {
+  final controller = TextEditingController();
+
+  Future<void> addNote() async {
+    if (controller.text.trim().isEmpty) return;
+    await FirebaseFirestore.instance.collection('notes').add({
+      'text': controller.text.trim(),
+      'uid': FirebaseAuth.instance.currentUser!.uid,
+      'timestamp': Timestamp.now(),
+    });
+    controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              Expanded(child: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Enter note'))),
+              IconButton(onPressed: addNote, icon: const Icon(Icons.add))
+            ],
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+              .collection('notes')
+              .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+              .orderBy('timestamp', descending: true)
+              .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data!.docs;
+              if (docs.isEmpty) return const Center(child: Text('No notes yet.'));
+              return ListView(
+                children: docs.map((doc) {
+                  return Card(
+                    child: ListTile(
+                      title: Text(doc['text']),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          await FirebaseFirestore.instance.collection('notes').doc(doc.id).delete();
+                        },
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}

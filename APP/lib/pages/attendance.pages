@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class AttendancePage extends StatefulWidget {
+  const AttendancePage({super.key});
+  @override
+  State<AttendancePage> createState() => _AttendancePageState();
+}
+
+class _AttendancePageState extends State<AttendancePage> {
+  final studentNameController = TextEditingController();
+
+  Future<void> markAttendance() async {
+    if (studentNameController.text.trim().isEmpty) return;
+    await FirebaseFirestore.instance.collection('attendance').add({
+      'name': studentNameController.text.trim(),
+      'timestamp': Timestamp.now(),
+    });
+    studentNameController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: TextField(controller: studentNameController, decoration: const InputDecoration(hintText: 'Student name'))),
+            IconButton(onPressed: markAttendance, icon: const Icon(Icons.check)),
+          ],
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('attendance').orderBy('timestamp', descending: true).snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data!.docs;
+              return ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (context, i) {
+                  final doc = docs[i];
+                  return ListTile(title: Text(doc['name']));
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}

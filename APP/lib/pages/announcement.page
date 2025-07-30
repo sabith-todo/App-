@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class AnnouncementsPage extends StatefulWidget {
+  const AnnouncementsPage({super.key});
+  @override
+  State<AnnouncementsPage> createState() => _AnnouncementsPageState();
+}
+
+class _AnnouncementsPageState extends State<AnnouncementsPage> {
+  final announcementController = TextEditingController();
+
+  Future<void> addAnnouncement() async {
+    if (announcementController.text.trim().isEmpty) return;
+    await FirebaseFirestore.instance.collection('announcements').add({
+      'text': announcementController.text.trim(),
+      'timestamp': Timestamp.now(),
+    });
+    announcementController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: TextField(controller: announcementController, decoration: const InputDecoration(hintText: 'Enter announcement'))),
+            IconButton(onPressed: addAnnouncement, icon: const Icon(Icons.send)),
+          ],
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('announcements').orderBy('timestamp', descending: true).snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data!.docs;
+              return ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (context, i) {
+                  final doc = docs[i];
+                  return ListTile(title: Text(doc['text']));
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}

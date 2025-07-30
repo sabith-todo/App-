@@ -1,0 +1,72 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'notes_page.dart';
+import 'timetable_page.dart';
+import 'materials_page.dart';
+import 'admin_allocation_page.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int index = 0;
+  String role = 'student';
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRole();
+  }
+
+  Future<void> fetchRole() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final snap = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    setState(() {
+      role = snap['role'];
+      loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final pages = <Widget>[
+      const NotesPage(),
+      const TimetablePage(),
+      const MaterialsPage(),
+      if (role == 'admin') const AdminAllocationPage(),
+    ];
+
+    final navItems = <BottomNavigationBarItem>[
+      const BottomNavigationBarItem(icon: Icon(Icons.note), label: 'Notes'),
+      const BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Timetable'),
+      const BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Materials'),
+      if (role == 'admin') const BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: 'Admin'),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Student Helper'),
+        actions: [
+          IconButton(onPressed: () async {
+            await FirebaseAuth.instance.signOut();
+          }, icon: const Icon(Icons.logout)),
+        ],
+      ),
+      body: pages[index],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: index,
+        onTap: (i) => setState(() => index = i),
+        items: navItems,
+      ),
+    );
+  }
+}

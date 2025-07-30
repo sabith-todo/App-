@@ -1,0 +1,79 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class MaterialsPage extends StatefulWidget {
+  const MaterialsPage({super.key});
+  @override
+  State<MaterialsPage> createState() => _MaterialsPageState();
+}
+
+class _MaterialsPageState extends State<MaterialsPage> {
+  String role = 'student';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRole();
+  }
+
+  Future<void> fetchRole() async {
+    final snap = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get();
+    setState(() => role = snap['role']);
+  }
+
+  Future<void> uploadMaterial() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result != null) {
+      final file = File(result.files.single.path!);
+      final ref = FirebaseStorage.instance.ref('materials/${result.files.single.name}');
+      await ref.putFile(file);
+      final url = await ref.getDownloadURL();
+      await FirebaseFirestore.instance.collection('materials').add({
+        'name': result.files.single.name,
+        'url': url,
+        'uid': FirebaseAuth.instance.currentUser!.uid,
+        'timestamp': Timestamp.now(),
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (role == 'staff' || role == 'admin')
+          ElevatedButton(onPressed: uploadMaterial, child: const Text('Upload Material')),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('materials').orderBy('timestamp', descending: true).snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data!.docs;
+              return ListView(
+                children: docs.map((doc) {
+                  return ListTile(
+                    title: Text(doc['name']),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.download),
+                      onPressed: () async {
+                        final url = doc['url'];
+                        if (await canLaunchUrl(Uri.parse(url))) {
+                          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}

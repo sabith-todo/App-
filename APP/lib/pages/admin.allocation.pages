@@ -1,0 +1,71 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/role_service.dart';
+
+class AdminAllocationPage extends StatefulWidget {
+  const AdminAllocationPage({super.key});
+  @override
+  State<AdminAllocationPage> createState() => _AdminAllocationPageState();
+}
+
+class _AdminAllocationPageState extends State<AdminAllocationPage> {
+  final staffIdController = TextEditingController();
+  final subjectController = TextEditingController();
+  final classController = TextEditingController();
+  final roleService = RoleService();
+
+  Future<void> assign() async {
+    if (staffIdController.text.isEmpty || subjectController.text.isEmpty || classController.text.isEmpty) return;
+    await roleService.assignStaff(staffIdController.text.trim(), subjectController.text.trim(), classController.text.trim());
+    staffIdController.clear();
+    subjectController.clear();
+    classController.clear();
+  }
+
+  Future<void> promote() async {
+    if (staffIdController.text.isEmpty) return;
+    await roleService.promoteToStaff(staffIdController.text.trim());
+    staffIdController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          TextField(controller: staffIdController, decoration: const InputDecoration(labelText: 'Staff UID')),
+          TextField(controller: subjectController, decoration: const InputDecoration(labelText: 'Subject')),
+          TextField(controller: classController, decoration: const InputDecoration(labelText: 'Class')),
+          Row(
+            children: [
+              ElevatedButton(onPressed: assign, child: const Text('Assign Staff')),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: promote, child: const Text('Promote to Staff')),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('allocations').snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const CircularProgressIndicator();
+                final docs = snapshot.data!.docs;
+                return ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, i) {
+                    final doc = docs[i];
+                    return ListTile(
+                      title: Text('${doc['subject']} - ${doc['className']}'),
+                      subtitle: Text('Staff: ${doc['staffUid']}'),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
